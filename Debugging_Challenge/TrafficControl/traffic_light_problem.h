@@ -39,7 +39,10 @@ struct lane_of_cars_s
 	int8_t carsThatHaveLeft;
 	
 	int8_t popularity;
-	int8_t timeWaiting;
+	int32_t timeWaiting;
+	/*I got: SUCCESS: You got all the cars through! The total wait time was: -26 seconds!
+	since it should not be negative the safest way is to do int32_t*/
+
 };
 
 struct intersection_s
@@ -56,6 +59,7 @@ struct intersection_s
 //****************************************************************************
 // Public Function Prototype(s):
 //***************************************************************************
-void main(void); //Main function to run the traffic simulation
+/*got warning for "void main" by : $ gcc -Wall */
+int main(void); //Main function to run the traffic simulation
 
 #endif //INC_TRAFFIC_LIGHT_PROBLEM_H
