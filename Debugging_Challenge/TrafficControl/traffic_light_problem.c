@@ -13,8 +13,8 @@
 //****************************************************************************
 // Include(s)
 //****************************************************************************
-#include "traffic_light_problem.h"
-#include <stdio.h>
+#include "traffic_light_problem.h" //defines the data model of the traffic system.
+#include <stdio.h> 
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
@@ -44,7 +44,8 @@ static int8_t checkForCrashes(void);
 //****************************************************************************
 
 //Main function to run the traffic simulation
-void main(void)
+/*got warning for "void main" by : $ gcc -Wall */
+int main(void)
 {
 	//Seed my random number generator
 	srand(time(0));
@@ -75,22 +76,33 @@ void main(void)
 		if(checkForCrashes() == 1)
 		{
 			printf("FAIL: Car crash!\n");
-			return;
+			//
+			return 1; /*int function must return an integer.*/
+			//
 		}
 
 		//Check if all the cars have left the lanes
 		if(myIntersection.northboundCars.carsThatHaveLeft == 10 && myIntersection.southboundCars.carsThatHaveLeft == 10 && myIntersection.westboundCars.carsThatHaveLeft == 10 && myIntersection.eastboundCars.carsThatHaveLeft == 10)
 		{
-			int16_t totalWaitTime = myIntersection.northboundCars.timeWaiting + myIntersection.southboundCars.timeWaiting + myIntersection.westboundCars.timeWaiting + myIntersection.eastboundCars.timeWaiting;
+			int32_t totalWaitTime = myIntersection.northboundCars.timeWaiting + myIntersection.southboundCars.timeWaiting + myIntersection.westboundCars.timeWaiting + myIntersection.eastboundCars.timeWaiting;
+			/* I got: SUCCESS: You got all the cars through! The total wait time was: -26 seconds!
+			 since it should not be negative the safest way is to do int32_t for totalWaitTime*/
 			printf("SUCCESS: You got all the cars through! The total wait time was: %i seconds!\n", totalWaitTime);
-			return;
+			//
+			return 0; /*int function must return an integer.*/
+			//
 		}
 	}
 
 	//If the animation time's out, let them know their score.
 	int8_t totalCarsThatMadeIt = myIntersection.northboundCars.carsThatHaveLeft + myIntersection.southboundCars.carsThatHaveLeft + myIntersection.westboundCars.carsThatHaveLeft + myIntersection.eastboundCars.carsThatHaveLeft;
-	int16_t totalWaitTime = myIntersection.northboundCars.timeWaiting + myIntersection.southboundCars.timeWaiting + myIntersection.westboundCars.timeWaiting + myIntersection.eastboundCars.timeWaiting;
+	int32_t totalWaitTime = myIntersection.northboundCars.timeWaiting + myIntersection.southboundCars.timeWaiting + myIntersection.westboundCars.timeWaiting + myIntersection.eastboundCars.timeWaiting;
+	/* I got: SUCCESS: You got all the cars through! The total wait time was: -26 seconds!
+	since it should not be negative the safest way is to do int32_t for totalWaitTime*/
 	printf("FAIL: Traffic Jam! You ran out of time. You got %i/40 cars through in 120 seconds. The total wait time was: %i seconds.\n", totalCarsThatMadeIt, totalWaitTime);
+	//
+	return 1;
+	/*added "return 1;" becaue of int main()*/
 }
 
 //****************************************************************************
@@ -99,6 +111,9 @@ void main(void)
 
 static void initIntersection(void)
 {
+	/*Added: Explicit initialization of intersection state to ensure deterministic startup */
+	myIntersection = (struct intersection_s){0};
+	//
 	myIntersection.horizantalTrafficColor = "R";
 	myIntersection.verticalTrafficColor = "R";
 
@@ -122,40 +137,50 @@ static char * setHorizantalTrafficLight(struct intersection_s intersection)
 	else if(strcmp(currentColor,"G") == 0)
 	{
 		currentColorEnum = GREEN;
-
-		if(strcmp(currentColor,"Y") == 0)
-		{
-			currentColorEnum = YELLOW;
-		}
 	}
+	/*currentColor = "Y" should not be inside as it won't reach at all.*/
+	else if(strcmp(currentColor,"Y") == 0)
+	{
+		currentColorEnum = YELLOW;
+	}
+	
+	int8_t horizontalDemand = intersection.eastboundCars.carsWaitingAtIntersection + intersection.westboundCars.carsWaitingAtIntersection;
+    int8_t verticalDemand = intersection.northboundCars.carsWaitingAtIntersection + intersection.southboundCars.carsWaitingAtIntersection;
 
 	t++;
 	switch(currentColorEnum)
 	{
 		case RED:
-			if((intersection.eastboundCars.carsWaitingAtIntersection + intersection.westboundCars.carsWaitingAtIntersection >= intersection.northboundCars.carsWaitingAtIntersection + intersection.southboundCars.carsWaitingAtIntersection) && (strcmp(intersection.verticalTrafficColor,"R") == 0))
+			if((horizontalDemand >= verticalDemand) && (strcmp(intersection.verticalTrafficColor, "R") == 0))
 			{
 				newColor = "G";
 				t = 0;
 			}
+			break;
+			/*got "lacking break;"" by "gcc -Wextra"*/
 
 		case GREEN:
-			if((intersection.eastboundCars.carsWaitingAtIntersection + intersection.westboundCars.carsWaitingAtIntersection < intersection.northboundCars.carsWaitingAtIntersection + intersection.southboundCars.carsWaitingAtIntersection) || t > 10)
+			/*HEURISTIC OPTIMIZATION:
+    		1. Actuated Control: switch to yellow if current lane is empty.
+    		2. Hysteresis: Only switch due to demand if cross-traffic is significantly higher (e.g. +2).*/
+			if(verticalDemand > horizontalDemand + 2 || t > 10 || (horizontalDemand == 0 && verticalDemand > 0)) 
 			{
 				newColor = "Y";
 				t = 0;
 			}
-
+			break;
 		case YELLOW:
 			if(t > 1)
 			{
 				newColor = "R";
 				t = 0;
 			}
+			break;
 
 		default:
 			newColor = "R";
 			t = 0;	
+			break;
 	}
 
 	return newColor;
@@ -171,30 +196,36 @@ static char * setVerticalTrafficLight(struct intersection_s intersection)
 	if(strcmp(currentColor,"R") == 0)
 	{
 		currentColorEnum = RED;
-
-		if(strcmp(currentColor,"G") == 0)
-		{	
-			currentColorEnum = GREEN;
-		}
 	}
+	/* fix currentColor == "G" to not be inside of "R" as it won't reach!*/
+	else if(strcmp(currentColor,"G") == 0)
+	{	
+			currentColorEnum = GREEN;
+	}
+	
 	else if(strcmp(currentColor,"Y") == 0)
 	{
 		currentColorEnum = YELLOW;
 	}
 
+	int8_t horizontalDemand = intersection.eastboundCars.carsWaitingAtIntersection + intersection.westboundCars.carsWaitingAtIntersection;
+    int8_t verticalDemand = intersection.northboundCars.carsWaitingAtIntersection + intersection.southboundCars.carsWaitingAtIntersection;
+
 	t++;
 	switch(currentColorEnum)
 	{
 		case RED:
-			if((intersection.eastboundCars.carsWaitingAtIntersection + intersection.westboundCars.carsWaitingAtIntersection < intersection.northboundCars.carsWaitingAtIntersection + intersection.southboundCars.carsWaitingAtIntersection) && (strcmp(intersection.horizantalTrafficColor,"R") == 0))
+			
+			if((verticalDemand > horizontalDemand) && (strcmp(intersection.horizantalTrafficColor, "R") == 0))
 			{
 				newColor = "G";
 				t = 0;
 			}
 			break;
 
-		case GREEN:
-			if((intersection.eastboundCars.carsWaitingAtIntersection + intersection.westboundCars.carsWaitingAtIntersection >= intersection.northboundCars.carsWaitingAtIntersection + intersection.southboundCars.carsWaitingAtIntersection) || t > 10)
+		case GREEN: 
+			/*HEURISTIC OPTIMIZATION*/
+			if(horizontalDemand > verticalDemand + 2 || t > 10 || (verticalDemand == 0 && horizontalDemand > 0))
 			{
 				newColor = "Y";
 				t = 0;
@@ -424,9 +455,9 @@ static void delay(int16_t ms)
 
 static int8_t checkForCrashes(void)
 {
-	int8_t isHorizantalCarInIntersection = (myIntersection.westboundCars.carsInIntersection | myIntersection.eastboundCars.carsInIntersection);
-	int8_t isVerticalCarInIntersection = (myIntersection.westboundCars.carsInIntersection | myIntersection.eastboundCars.carsInIntersection);
-
+	int8_t isHorizantalCarInIntersection = (myIntersection.westboundCars.carsInIntersection || myIntersection.eastboundCars.carsInIntersection);
+	int8_t isVerticalCarInIntersection = (myIntersection.northboundCars.carsInIntersection || myIntersection.southboundCars.carsInIntersection);
+	/* Fix isVerticalCarInIntersection to include south and north */
 	if(isHorizantalCarInIntersection && isVerticalCarInIntersection){return 1;}
 	return 0;
 }

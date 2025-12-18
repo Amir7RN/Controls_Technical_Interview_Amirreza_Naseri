@@ -39,9 +39,21 @@ Candidate Action Items:
 - Make any other improvements to the code as you see fit
 - Answer the following questions:
   - What would you tell the junior engineer about ways that they could improve their code in the future? (1-3 sentences)
-    - ADD YOUR ANSWER HERE
+    - 1- I would encourage writing small assertions (e.g., never both directions green simultaneously) to catch logic errors early  during simulation.
+      2- To minimize total simulation time, I would implement Hysteresis. The system would only initiate a switch if the opposing lane has a lead of at least 2 cars. This ensures we don't incur a "Yellow Light Penalty" for a negligible difference in traffic. However, to prevent idling, I would allow an override if the current lane is completely empty while demand exists elsewhere. This ensures we maximize the "Saturation Flow" of every green light and never waste seconds idling at an empty intersection.
+      3- I would encourage consolidating the horizontal and vertical controllers into a single unified function in order to prevent the current bugs and issues.   
+      
   - How else would you change this code to make it better so you can build on it in the future?(1-10 sentences).
-    - ADD YOUR ANSWER HERE
+    - code-wise improvemnet: To make this project more robust and scalable, 
+      1- I would then move all hard-coded Numbers, such as the 10-car lane capacity and the 120-second simulation limit, into into global constants to improve maintainability.
+      2- I would encourage explicitly initializing the "initIntersection struct" to avoid relying on implicit compiler behavior.
+      3- I would also refactor the functions to pass the intersection by reference rather than by value, ensuring we’re always working with the actual system state.  
+      4- I would replace the string-based color logic with the provided traffic_light_colors_t enum to eliminate the risk of typos.
+    Algorithm-wise improvement: 
+      1- Instead of a fixed 10 sec max-green, extend green one second at a time when the served direction still has cars waiting and the opposing direction is below a threshold. This reduces unnecessary switching.
+      2- If the goal is to make it more real-world scenarios, to improve stability, I would add a "Minimum Green Time" to the state machine; this prevents the lights from "chattering" rapidly when car counts are nearly equal. 
+      3- Also, for real world scenarios, I would move toward a weighted cost-function that considers not just the number of cars, but the cumulative wait time of the lead vehicle, ensuring that lanes with lower popularity aren't left waiting indefinitely.
+
 
 Don't forget; we are interested in both your solution and your thought process.
 
