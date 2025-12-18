@@ -44,9 +44,145 @@ static void delay(int16_t ms);
 //To stop at a floor means to open the doors and let passengers on and off. It 
 //is possible to pass through a floor without stopping there.
 //Note: The output should be a number between 0 and (BUILDING_HEIGHT-1), inclusive
+
+
+/* Counting how many empty passenger slots are available */
+static int8_t countFreeSlots(struct elevator_s elevator)
+{
+	int8_t freeSlots = 0;
+	for (int8_t i = 0; i < ELEVATOR_MAX_CAPACITY; i++){
+		if (elevator.passengers[i] == -1)
+		{
+			freeSlots++;
+		}
+	}
+	return freeSlots;
+}
+
+/* Check if any passenger needs to get off at the given floor */
+static int8_t hasDropoffAtFloor(struct elevator_s elevator, int8_t floor){
+	for (int8_t i =0; i < ELEVATOR_MAX_CAPACITY; i++){
+		if(elevator.passengers[i] == floor){
+			return 1;
+		}
+	}
+	return 0;
+}
+
+/* Check if there is at least one person waiting to get on at this floor */
+static int8_t hasPickUpAtFloor(struct floor_s floor){
+	for(int8_t j=0; j<2; j++){
+		if (floor.departures[j] != -1)	
+		{
+			return 1;
+		}		
+	}
+	return 0;
+}
+
+/* Count how many people are waiting at a given floor */
+static int8_t countWaitingPeople(struct floor_s floor) {
+    int8_t count = 0;
+    for (int8_t j = 0; j < 2; j++) {
+        if (floor.departures[j] != -1) {
+            count++;
+        }
+    }
+    return count;
+}
+
+/* Absolute value for int8_t */
+static int8_t abs8(int8_t x)
+{
+	return (x < 0) ? (int8_t)(-x) : x;
+}
+
 static int8_t setNextElevatorStop(struct building_s building)
 {
-	return 0;
+	static int8_t direction = +1;
+
+	int8_t current = building.elevator.currentFloor;
+	int8_t freeSlots = countFreeSlots(building.elevator);
+	int8_t elevatorFull = (freeSlots == 0);
+	
+	/* If at the very top, must go down. If at the very bottom, must go up */
+	if (current == BUILDING_HEIGHT - 1) direction = -1;
+	else if (current == 0) direction = +1;
+
+
+	/* Stop immediately if someone needs to get off here */
+	if (hasDropoffAtFloor(building.elevator, current)){
+		return current;
+	}
+
+	/* Stop immediately if we can pick up someone here and have space */
+	if(!elevatorFull && hasPickUpAtFloor(building.floors[current])){
+		return current;
+	}
+
+	int8_t bestFloor = -1;
+	int16_t bestScore = 32767; // large number
+
+	const int8_t W_DIST = 2; // weight for distance cost
+	const int8_t W_WAIT = 3; // weight for waiting cost
+
+	/* Search for the nearest useful stop in the current direction */
+	for (int8_t f = current + direction; (f >= 0) && (f < BUILDING_HEIGHT); f += direction){
+		if (hasDropoffAtFloor(building.elevator,f))
+		{
+			return f;
+		}
+		if (!elevatorFull && hasPickUpAtFloor(building.floors[f]))
+		{
+			int8_t waiting = countWaitingPeople(building.floors[f]);
+			int8_t dist = abs8((int8_t)(f - current));
+			// distance is costly, but stopping where more people wait is valuable
+			int16_t score = (int16_t)(W_DIST * dist) - (int16_t)(W_WAIT * waiting);
+			if (score < bestScore)
+			{
+				bestScore = score;
+				bestFloor = f;
+			}
+		}
+	}
+
+	if (bestFloor != -1) {
+        return bestFloor;
+    }
+
+	/* No useful stops found; reverse direction */
+	direction = (direction>0) ? -1:+1;
+
+	bestFloor = -1;
+	bestScore = 32767;
+
+	/* Search again in the opposite direction */
+	for(int8_t f = current + direction; (f >= 0) && (f < BUILDING_HEIGHT); f += direction)
+	{
+		if(hasDropoffAtFloor(building.elevator, f))
+		{
+			return f;
+		}
+		if(!elevatorFull && hasPickUpAtFloor(building.floors[f]))
+		{
+			int8_t waiting = countWaitingPeople(building.floors[f]);
+			int8_t dist = abs8((int8_t)(f - current));
+
+			int16_t score = (int16_t)(W_DIST * dist) - (int16_t)(W_WAIT * waiting);
+			if (score < bestScore)
+			{
+				bestScore = score;
+				bestFloor = f;
+			}
+		}
+	}
+
+	if (bestFloor != -1) {
+        return bestFloor;
+    }
+
+	/* remain on the current floor */
+	return current;
 }
 
 

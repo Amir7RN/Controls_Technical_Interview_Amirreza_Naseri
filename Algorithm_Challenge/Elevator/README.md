@@ -39,7 +39,7 @@ Candidate Action Items:
   above function, please do not edit the code that's already in the files, unless you are extremely certain that 
   there's a bug in the code.
 - Briefly describe your implementation (1-3 sentences).
-  - ADD YOUR ANSWER HERE
+  - The elevator only stops at floors where it can unload passengers or, if capacity allows, pick up waiting passengers, prioritizing drop-offs to avoid wasting stop time. It use a persistent travel direction to minimize unnecessary direction changes and reverses only when no useful stops remain ahead. To improve my baseline code, I use a lightweight scoring heuristic that trades off distance to the stop and number of people waiting for pickup selection, while always preserving drop-off priority.
 
 Don't forget; we are interested in both your solution and your thought process.
 
